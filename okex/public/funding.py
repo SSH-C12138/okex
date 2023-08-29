@@ -9,7 +9,20 @@ class Funding(object):
         self.tz = pytz.UTC
         
     def dt_to_ts(self, dt: datetime.datetime) -> int:
-        return int(datetime.datetime.timestamp(dt.replace(tzinfo=None).astimezone(self.tz)) * 1000)
+        return int(datetime.datetime.timestamp(dt.replace(tzinfo=self.tz)) * 1000)
+
+    def get_type_instruments(self, instType: str) -> list:
+        response = self.api.get_instruments(instType=instType)
+        ret = response.json()["data"] if response.status_code == 200 else []
+        return ret
+    
+    def get_swap_instruments(self) -> list:
+        self.swap_instruments = self.get_type_instruments(instType = "SWAP")
+        return self.swap_instruments
+
+    def get_margin_instruments(self) -> list:
+        self.margin_instruments = self.get_type_instruments(instType="MARGIN")
+        return self.margin_instruments
     
     def get_long_funding(self, instId: str, start_ts: int, end_ts:int) -> list:
         ts = end_ts
