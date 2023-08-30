@@ -66,6 +66,11 @@ class PublicAPI(Client):
     def get_mark_price(self, instType, uly=None, instId=None):
         params = {'instType': instType, 'uly': uly, 'instId': instId}
         return self._requests(MARK_PRICE, params)
+    
+    # Get Tickers
+    def get_tickers(self, instType, uly=None, instFamily=None):
+        params = {'instType': instType, 'uly': uly, 'instFamily': instFamily}
+        return self._requests(TICKERS_INFO, params)
 
     # Get Tier
     def get_tier(self, instType, tdMode, uly=None, instId=None, tier=None):
