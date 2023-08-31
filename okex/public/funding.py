@@ -57,7 +57,7 @@ class Funding(object):
         return data
     
     def get_long_funding(self, instId: str, start_ts: int, end_ts:int) -> list:
-        params = {"input": instId, "timestamp": "fundTime", "error": "funding", "start_ts": start_ts, "end_ts": end_ts}
+        params = {"input": instId, "timestamp": "fundingTime", "error": "funding", "start_ts": start_ts, "end_ts": end_ts}
         data = self.get_longTS_info(self.api.funding_rate_history, params=params)
         return data
     
