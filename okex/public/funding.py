@@ -26,6 +26,10 @@ class Funding(object):
         self.margin_instruments = self.get_type_instruments(instType="MARGIN")
         return self.margin_instruments
     
+    def get_margin_coins(self) -> set[str]:
+        ret = self.get_margin_instruments()
+        return  set([i["baseCcy"] for i in ret if i["state"] == "live"]) | set(["USDT", "USDC"])
+    
     def get_spot_instruments(self) -> list:
         self.spot_instruments = self.get_type_instruments(instType="SPOT")
         return self.spot_instruments
@@ -39,6 +43,10 @@ class Funding(object):
         ccy,instType = contract.split("-")[0], self.get_instType(contract)
         names = [info["instId"] for info in self.get_type_instruments(instType=instType) if (info["state"] == "live" and (info["instFamily"].split("-")[-1] == ccy or info["quoteCcy"] == ccy))]
         return names
+    
+    def get_eth2_staking(self, days = 30) -> list:
+        response = self.api.get_eth2_staking(days = days)
+        return response.json()["data"] if response.status_code == 200 else []
     
     def get_longTS_info(self, func, params: dict) -> list:
         ts = params["end_ts"]
@@ -96,10 +104,15 @@ class Funding(object):
         ret = float(info["volCcy24h"]) * float(info["last"]) if instType not in  ["SPOT", "MARGIN"] else float(info["volCcy24h"])
         return ret
     
-    def get_current(self, instId: str) -> dict[str, float]:
+    def get_current_funding(self, instId: str) -> dict[str, float]:
         if "SWAP" in instId.upper():
             response = self.api.get_funding_rate(instId=instId.upper())
             ret = response.json()["data"][0] if response.status_code == 200 else {'fundingRate': 'nan', 'nextFundingRate': 'nan'}
         else:
             ret = {'fundingRate': '0', 'nextFundingRate': '0'}
         return {"current": float(ret["fundingRate"]), "next": float(ret['nextFundingRate'])}
+
+    def get_current_interest(self, ccy: str) -> float:
+        response = self.api.get_interest(ccy)
+        ret = response.json()["data"][0] if response.status_code == 200 else {'estRate': 'nan', "preRate": "nan"}
+        return {"estRate": float(ret["estRate"]), "preRate": float(ret['preRate'])}

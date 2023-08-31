@@ -79,6 +79,7 @@ SYSTEM_TIME = '/api/v5/public/time'
 LIQUIDATION_ORDERS = '/api/v5/public/liquidation-orders'
 MARK_PRICE = '/api/v5/public/mark-price'
 POSITION_TIER = '/api/v5/public/position-tiers'
+ETH2_STAKING = '/v2/asset/balance/projectEth2/apy-list'
 
 # TRADE
 PLACR_ORDER = '/api/v5/trade/order'

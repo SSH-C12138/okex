@@ -1,5 +1,6 @@
 from .client import Client
 from .consts import *
+import time
 
 class PublicAPI(Client):
 
@@ -25,6 +26,11 @@ class PublicAPI(Client):
     def get_funding_rate(self, instId):
         params = {'instId': instId}
         return self._requests(FUNDING_RATE, params)
+    
+    # Get ETH2.0 Staking
+    def get_eth2_staking(self, days = 30):
+        params = {"days": days, "t": int(time.time() * 1000)}
+        return self._requests(ETH2_STAKING, params)
 
     # Get Funding Rate History
     def funding_rate_history(self, instId, after=None, before=None, limit=None):
