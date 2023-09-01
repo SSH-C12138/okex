@@ -1,4 +1,6 @@
+README.md
 setup.py
+okex/__init__.py
 okex.egg-info/PKG-INFO
 okex.egg-info/SOURCES.txt
 okex.egg-info/dependency_links.txt
