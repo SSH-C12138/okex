@@ -1,5 +1,7 @@
 import requests, hmac, base64, datetime, hashlib, yaml, os, yaml
 import cr_assis.api.okex.consts as c
+from requests.adapters import HTTPAdapter, Retry
+
 
 class Client(object):
     
@@ -40,7 +42,11 @@ class Client(object):
         return url[0:-1]
     
     def _send_requests(self, query: str, method: str = "GET") -> requests.Response:
-        response = requests.get(url = self.api_url + query, headers=self.header) if method == self.c.GET else requests.post(url = query, headers= self.header)
+        session, retry = requests.Session(), Retry(connect=5, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504])
+        adapter =  HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+        response = session.get(url = self.api_url + query, headers=self.header) if method == self.c.GET else session.post(url = query, headers= self.header)
         return response
     
     def _requests_public(self, query: str, method: str = "GET") -> requests.Response:

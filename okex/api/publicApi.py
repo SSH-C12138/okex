@@ -65,7 +65,7 @@ class PublicAPI(Client):
     def get_liquidation_orders(self, instType, mgnMode=None, instId=None, ccy=None, uly=None, alias=None, state=None, before=None,
                             after=None, limit=None):
         params = {'instType': instType, 'mgnMode': mgnMode, 'instId': instId, 'ccy': ccy, 'uly': uly,
-                  'alias': alias, 'state': state, 'before': before, 'after': after, 'limit': limit}
+                'alias': alias, 'state': state, 'before': before, 'after': after, 'limit': limit}
         return self._requests(LIQUIDATION_ORDERS, params)
 
     # Get Mark Price
@@ -79,7 +79,7 @@ class PublicAPI(Client):
         return self._requests(TICKERS_INFO, params)
 
     # Get Tier
-    def get_tier(self, instType, tdMode, uly=None, instId=None, tier=None):
+    def get_tier(self, instType, tdMode, instFamily=None, instId=None, tier=None, ccy = None):
         params = {k:v  for k, v in locals().items() if k != 'self' and v is not None}
         return self._requests(POSITION_TIER, params)
     

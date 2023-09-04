@@ -1,6 +1,7 @@
 from okex.api.publicApi import PublicAPI
-import datetime, time, pytz
+import datetime, time, pytz, os
 import numpy as np
+import pandas as pd
 
 class Funding(object):
     
@@ -8,10 +9,19 @@ class Funding(object):
         self.api = PublicAPI()
         self.now_ts = int(time.time() * 1000)
         self.tz = pytz.UTC
+        self.tier: dict[str, list] = {}
         self.tickers:dict[str, dict] = {}
+        self.instruments:dict[str, dict] = {}
         
     def dt_to_ts(self, dt: datetime.datetime) -> int:
         return int(datetime.datetime.timestamp(dt.replace(tzinfo=self.tz)) * 1000)
+
+    def get_discount_info(self, coin: str) -> list:
+        if not hasattr(self, "discount_info"):
+            response = self.api.discount_interest_free_quota()
+            ret = response.json()["data"] if response.status_code == 200 else []
+            self.discount_info = {info["ccy"]: info for info in ret}
+        return self.discount_info[coin.upper()]['discountInfo'] if coin.upper() in self.discount_info.keys() and 'discountInfo' in self.discount_info[coin.upper()].keys() else []
 
     def get_type_instruments(self, instType: str) -> list:
         response = self.api.get_instruments(instType=instType)
@@ -43,6 +53,106 @@ class Funding(object):
         ccy,instType = contract.split("-")[0], self.get_instType(contract)
         names = [info["instId"] for info in self.get_type_instruments(instType=instType) if (info["state"] == "live" and (info["instFamily"].split("-")[-1] == ccy or info["quoteCcy"] == ccy))]
         return names
+    
+    def organize_type_instruments(self, instType: str) -> None:
+        ret = self.get_type_instruments(instType=instType)
+        self.instruments.update({i["instId"]: i for i in ret})
+    
+    def get_contractsize_swap(self, instId: str) -> float:
+        instId = instId.upper()
+        self.organize_type_instruments(instType="SWAP") if instId not in self.instruments.keys() else None
+        if instId in self.instruments.keys():
+            ret = float(self.instruments[instId]["ctVal"])
+        else:
+            ret, self.instruments[instId] = np.nan, {"ctVal": "nan"}
+        return ret
+    
+    def get_contractsize_cswap(self, coin: str) -> float:
+        return self.get_contractsize_swap(instId=f"{coin.upper()}-USD-SWAP")
+    
+    def get_contractsize_uswap(self, coin: str) -> float:
+        return self.get_contractsize_swap(instId=f"{coin.upper()}-USDT-SWAP")
+    
+    def get_contractsize_usdc(self, coin: str) -> float:
+        return self.get_contractsize_swap(instId=f"{coin.upper()}-USDC-SWAP")
+    
+    def get_tier_swapAPI(self, instId: str) -> list:
+        response = self.api.get_tier(instType = "SWAP", tdMode = "cross", instFamily=instId.upper().replace("_", "-").replace("-SWAP", ""))
+        ret = response.json()["data"] if response.status_code == 200 else []
+        return ret
+    
+    def get_tier_spotAPI(self, coin: str) -> list:
+        response = self.api.get_tier(instType = "MARGIN", tdMode = "cross", ccy = coin.upper().replace("_", "-").split("-")[0])
+        ret = response.json()["data"] if response.status_code == 200 else []
+        return ret
+    
+    def get_tier_swap(self, instId: str) -> list:
+        instId = instId.upper().replace("_", "-")
+        if os.path.isfile(f"""{os.path.expanduser("~")}/data/tier/okex/{instId}.csv"""):
+            tier = pd.read_csv(f"""{os.path.expanduser("~")}/data/tier/okex/{instId}.csv""").to_dict('records')
+        else:
+            tier = self.get_tier_swapAPI(instId=instId)
+        self.tier.update({instId: tier})
+        return tier
+    
+    def get_tier_spot(self, coin: str) -> list:
+        coin = coin.upper().replace("_", "-").split("-")[0]
+        if os.path.isfile(f"""{os.path.expanduser("~")}/data/tier/okex/{coin}.csv"""):
+            tier =  pd.read_csv(f"""{os.path.expanduser("~")}/data/tier/okex/{coin}.csv""").to_dict('records')
+        else:
+            tier =  self.get_tier_spotAPI(coin=coin)
+        self.tier.update({coin: tier})
+        return tier
+    
+    def get_mmr_spot(self, coin: str, amount: float) -> float:
+        """get mmr of spot
+
+        Args:
+            coin (str): the name of coin, str.upper()
+            amount (float): the coin number of spot asset, not dollar value
+        """
+        coin = coin.upper()
+        tier = self.tier[coin] if coin in self.tier.keys() else self.get_tier_spot(coin)
+        mmr = self.find_mmr(amount = amount, tier = tier)
+        return mmr
+    
+    def get_mmr_swap(self, instId: str, amount: float) -> float:
+        """get mmr of swap contract
+
+        Args:
+            coin (str): the name of coin, str.upper()
+            amount (float): the contract number of swap, not dollar value, not coin number
+        """
+        instId = instId.upper().replace("_", "-")
+        tier = self.tier[instId] if instId in self.tier.keys() else self.get_tier_swap(instId)
+        mmr = self.find_mmr(amount = amount, tier = tier)
+        return mmr
+    
+    def get_mmr(self, instId: str, amount: float) -> float:
+        coin, instType = instId.upper().replace("_", "-").split("-")[0], self.get_instType(instId=instId)
+        if instType == "SPOT":
+            mmr = 0 if amount >=0 else self.get_mmr_spot(coin, -amount)
+        elif instType == "SWAP":
+            mmr = self.get_mmr_swap(instId.upper().replace("_", "-"), abs(amount))
+        else:
+            mmr = np.nan
+        return mmr
+    
+    def find_mmr(self, amount: float, tier: list) -> float:
+        """
+        Args:
+            amount (float): the amount of spot asset or swap contract
+            tier (pd.DataFrame): the position tier information
+        """
+        if amount <= 0:
+            return 0
+        else:
+            mmr = np.nan
+            for info in tier:
+                if amount > float(info["minSz"]) and amount <= float(info["maxSz"]):
+                    mmr = float(info["mmr"])
+                    break
+            return mmr
     
     def get_eth2_staking(self, days = 30) -> list:
         response = self.api.get_eth2_staking(days = days)
@@ -103,6 +213,11 @@ class Funding(object):
         info = self.tickers[instId] if instId in self.tickers.keys() else {"volCcy24h": np.nan, "last": np.nan}
         ret = float(info["volCcy24h"]) * float(info["last"]) if instType not in  ["SPOT", "MARGIN"] else float(info["volCcy24h"])
         return ret
+    
+    def get_price(self, instId: str) -> float:
+        instId, instType = instId.upper(), self.get_instType(instId)
+        self.get_tickers(instType=instType) if instId not in self.tickers.keys() else None
+        return float(self.tickers[instId]["last"]) if instId in self.tickers.keys() else np.nan
     
     def get_current_funding(self, instId: str) -> dict[str, float]:
         if "SWAP" in instId.upper():
