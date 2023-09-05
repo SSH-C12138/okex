@@ -16,6 +16,7 @@ class Client(object):
         self.name: str = ""
     
     def load_account_api(self) -> None:
+        self.api_key, self.secret_key, self.passphrase = "", "", ""
         with open(f"{os.environ['HOME']}/.cr_assis/account_okex_api.yml", "rb") as f:
             data: list[dict] = yaml.load(f, Loader= yaml.SafeLoader)
         for info in data:

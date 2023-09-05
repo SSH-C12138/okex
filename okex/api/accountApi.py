@@ -1,5 +1,5 @@
-from cr_assis.api.okex.client import Client
-import cr_assis.api.okex.consts as c
+from okex.api.client import Client
+import okex.api.consts as c
 
 class AccountAPI(Client):
 
@@ -87,3 +87,9 @@ class AccountAPI(Client):
     def get_max_withdrawal(self, ccy=None):
         params = {'ccy': ccy}
         return self._requests(c.MAX_WITHDRAWAL, params)
+    
+    def get_easy_convert(self):
+        return self._requests(c.EASY_CONVERET)
+
+    def get_oneLink_repay(self):
+        return self._requests(c.ONE_CLICK_REPAY)
