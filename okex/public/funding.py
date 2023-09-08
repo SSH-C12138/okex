@@ -1,5 +1,6 @@
 from okex.api.publicApi import PublicAPI
 import datetime, time, pytz, os
+import cr_assis.account.consts as c
 import numpy as np
 import pandas as pd
 
@@ -9,10 +10,49 @@ class Funding(object):
         self.api = PublicAPI()
         self.now_ts = int(time.time() * 1000)
         self.tz = pytz.UTC
+        self.coin_price = {}
         self.tier: dict[str, list] = {}
         self.tickers:dict[str, dict] = {}
         self.instruments:dict[str, dict] = {}
-        
+        self.spreads: dict[str, pd.DataFrame] = {}
+        self.csv_time_str = c.TIME_MILLISECONDS
+        self.datacenter = os.path.expanduser("~")+f"/data/account/okex" if not os.path.exists(c.CENTER_PATH) else c.CENTER_PATH
+        self.depth_path = os.path.expanduser("~")+f"/data/depthData" if not os.path.exists(c.DEPTH_PATH) else c.DEPTH_PATH
+    
+    def read_day_csv(self, path: str, start: datetime.datetime, end: datetime.datetime) -> pd.DataFrame:
+        date, all_data = start, {}
+        while date <= end:
+            all_data[date.date()] = pd.read_csv(f"{path}/{date.date()}.csv") if os.path.isfile(f"{path}/{date.date()}.csv") else pd.DataFrame(columns = ["time"])
+            date += datetime.timedelta(days = 1)
+        ret = pd.concat(all_data.values()).sort_values(by = "time")
+        ret["time"] = ret["time"].apply(lambda x: datetime.datetime.strptime(x, self.csv_time_str).replace(tzinfo = self.tz))
+        return ret[(ret["time"] >= start) & (ret["time"] <= end)].reset_index(drop=True)
+    
+    def get_depthData(self, instId: str, start:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC) + datetime.timedelta(days = -1), end:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC)) -> pd.DataFrame: 
+        """
+        Args:
+            instId (str): the instId 
+            start (datetime.datetime, optional): _description_. Defaults to datetime.datetime.now().astimezone(pytz.tz)+datetime.timedelta(days = -1).
+            end (datetime.datetime, optional): _description_. Defaults to datetime.datetime.now().astimezone(pytz.tz).
+        Returns:
+            pd.DataFrame: _description_
+        """
+        pair = instId.lower().replace("-", "_")
+        kind = pair.split("_")[-1] if not str.isnumeric(pair.split("_")[-1]) else "delivery"
+        data = self.read_day_csv(path = f"{self.depth_path}/{kind}/{pair}", start=start, end = end)
+        return data
+    
+    def get_spreadData(self, combo: str, start:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC) + datetime.timedelta(days = -1), end:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC)) -> pd.DataFrame:
+        self.depthData = {c.MASTER: self.get_depthData(instId=combo.split("-")[0], start = start, end = end), c.SLAVE: self.get_depthData(instId=combo.split("-")[-1], start = start, end = end)}
+        data = pd.merge(self.depthData[c.MASTER][["bid", "ask", "time"]].rename(columns={"bid": f"{c.MASTER}_bid", "ask": f"{c.MASTER}_ask"}), self.depthData[c.SLAVE][["bid", "ask", "time"]].rename(columns={"bid": f"{c.SLAVE}_bid", "ask": f"{c.SLAVE}_ask"}), on = "time")
+        self.spreadData = pd.DataFrame(columns = [c.LONG, c.SHORT, "time"]).astype({c.LONG: "float64", c.SHORT: "float64", "time": "datetime64[ns]"})
+        self.spreadData[c.LONG], self.spreadData[c.SHORT], self.spreadData["time"] = data[f"{c.SLAVE}_bid"]/data[f"{c.MASTER}_bid"], data[f"{c.MASTER}_ask"]/data[f"{c.SLAVE}_ask"], data["time"]
+        self.spreads[combo] = self.spreadData.copy()
+        return self.spreadData
+    
+    def get_spread(self, combo: str, start:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC) + datetime.timedelta(days = -1), end:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC)) -> pd.DataFrame:
+        return self.spreads[combo] if combo in self.spreads.keys() else self.get_spreadData(combo, start, end)
+    
     def dt_to_ts(self, dt: datetime.datetime) -> int:
         return int(datetime.datetime.timestamp(dt.replace(tzinfo=self.tz)) * 1000)
 
@@ -57,6 +97,15 @@ class Funding(object):
     def organize_type_instruments(self, instType: str) -> None:
         ret = self.get_type_instruments(instType=instType)
         self.instruments.update({i["instId"]: i for i in ret})
+    
+    def get_contractsize(self, instId: str) -> float:
+        instType = self.get_instType(instId)
+        if instType == "SPOT":
+            return 1
+        elif instType == "SWAP":
+            return self.get_contractsize_swap(instId)
+        else:
+            return np.nan
     
     def get_contractsize_swap(self, instId: str) -> float:
         instId = instId.upper()
@@ -196,6 +245,19 @@ class Funding(object):
         response = self.api.get_tickers(instType=instType)
         ret = response.json()["data"] if response.status_code == 200 else []
         self.tickers.update({i["instId"]: i for i in ret})
+    
+    def update_coin_price(self) -> None:
+        self.get_tickers(instType= "SPOT")
+        self.coin_price.update({instId.split("-")[0].upper(): float(info["last"]) for instId, info in self.tickers.items() if (info["instId"].split("-")[1]=="USDT" and info["instType"] != "FUTURES")})
+            
+    def get_coin_price(self, coin: str) -> float:
+        coin = coin.upper()
+        self.update_coin_price() if coin not in self.coin_price.keys() else None
+        if coin in self.coin_price.keys():
+            ret = self.coin_price[coin]
+        else:
+            ret, self.coin_price[coin] = np.nan, np.nan
+        return ret
     
     def get_instType(self, instId: str) -> str:
         ret = instId.split("-")[-1].upper()
