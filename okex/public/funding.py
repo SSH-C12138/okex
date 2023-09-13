@@ -19,6 +19,10 @@ class Funding(object):
         self.datacenter = os.path.expanduser("~")+f"/data/account/okex" if not os.path.exists(c.CENTER_PATH) else c.CENTER_PATH
         self.depth_path = os.path.expanduser("~")+f"/data/depthData" if not os.path.exists(c.DEPTH_PATH) else c.DEPTH_PATH
     
+    def get_utc_time(self, days=0, seconds=0, microseconds=0,
+                milliseconds=0, minutes=0, hours=0, weeks=0) -> datetime.datetime:
+        return datetime.datetime.now().astimezone(self.tz) + datetime.timedelta(days=days, seconds=seconds, microseconds=microseconds, milliseconds=milliseconds, minutes=minutes, hours=hours, weeks=weeks)
+    
     def read_day_csv(self, path: str, start: datetime.datetime, end: datetime.datetime) -> pd.DataFrame:
         date, all_data = start, {}
         while date <= end:
