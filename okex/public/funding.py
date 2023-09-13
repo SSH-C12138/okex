@@ -40,7 +40,7 @@ class Funding(object):
         pair = instId.lower().replace("-", "_")
         kind = pair.split("_")[-1] if not str.isnumeric(pair.split("_")[-1]) else "delivery"
         data = self.read_day_csv(path = f"{self.depth_path}/{kind}/{pair}", start=start, end = end)
-        return data
+        return data if len(data) > 0 else pd.DataFrame(columns = ["bid", "bidVol","ask", "askVol","time"])
     
     def get_spreadData(self, combo: str, start:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC) + datetime.timedelta(days = -1), end:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC)) -> pd.DataFrame:
         self.depthData = {c.MASTER: self.get_depthData(instId=combo.split("-")[0], start = start, end = end), c.SLAVE: self.get_depthData(instId=combo.split("-")[-1], start = start, end = end)}
