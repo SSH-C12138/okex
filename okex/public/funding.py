@@ -10,7 +10,7 @@ class Funding(object):
         self.api = PublicAPI()
         self.now_ts = int(time.time() * 1000)
         self.tz = pytz.UTC
-        self.coin_price = {}
+        self.coin_price = {coin: 1 for coin in c.QUOTE_CCY}
         self.tier: dict[str, list] = {}
         self.tickers:dict[str, dict] = {}
         self.instruments:dict[str, dict] = {}

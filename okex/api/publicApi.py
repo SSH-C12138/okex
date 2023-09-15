@@ -83,10 +83,22 @@ class PublicAPI(Client):
         params = {k:v  for k, v in locals().items() if k != 'self' and v is not None}
         return self._requests(POSITION_TIER, params)
     
+    # Get History Interest
     def get_interest_history(self, ccy: str=None, after: str|int = None, before: str|int = None, limit: int|str = None):
         params = {k:v  for k, v in locals().items() if k != 'self' and v is not None}
         return self._requests(LENDING_RATE_HISTORY, params)
     
+    # Get Interest
     def get_interest(self, ccy: str=None):
         params = {k:v  for k, v in locals().items() if k != 'self' and v is not None}
         return self._requests(LENDING_RATE_SUMMARY, params)
+    
+    # Get Klines
+    def get_candles(self, instId: str, bar: str = "1D", after: int|str = None, before: int|str = None, limit: int|str = 100):
+        params = {k:v  for k, v in locals().items() if k != 'self' and v is not None}
+        return self._requests(MARKET_CANDLES, params)
+    
+    # Get History Klines
+    def get_candles(self, instId: str, bar: str = "1D", after: int|str = None, before: int|str = None, limit: int|str = 100):
+        params = {k:v  for k, v in locals().items() if k != 'self' and v is not None}
+        return self._requests(HISTORY_CANDLES, params)
