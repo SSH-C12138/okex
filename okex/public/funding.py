@@ -1,5 +1,5 @@
 from okex.api.publicApi import PublicAPI
-import datetime, time, pytz, os
+import datetime, time, pytz, os, json
 import cr_assis.account.consts as c
 import numpy as np
 import pandas as pd
@@ -10,14 +10,16 @@ class Funding(object):
         self.api = PublicAPI()
         self.now_ts = int(time.time() * 1000)
         self.tz = pytz.UTC
-        self.coin_price = {coin: 1 for coin in c.QUOTE_CCY}
         self.tier: dict[str, list] = {}
-        self.tickers:dict[str, dict] = {}
-        self.instruments:dict[str, dict] = {}
         self.spreads: dict[str, pd.DataFrame] = {}
         self.csv_time_str = c.TIME_MILLISECONDS
         self.datacenter = os.path.expanduser("~")+f"/data/account/okex" if not os.path.exists(c.CENTER_PATH) else c.CENTER_PATH
         self.depth_path = os.path.expanduser("~")+f"/data/depthData" if not os.path.exists(c.DEPTH_PATH) else c.DEPTH_PATH
+        self.tickers:dict[str, dict] = json.load(open(f"{os.path.expanduser('~')}/data/tickers/okex/tickers.json", "rb")) if os.path.isfile(f"{os.path.expanduser('~')}/data/tickers/okex/tickers.json") else None
+        self.coin_price = {coin: 1 for coin in c.QUOTE_CCY}
+        self.coin_price.update(json.load(open(f"{os.path.expanduser('~')}/data/tickers/okex/coin_price.json", "rb"))) if os.path.isfile(f"{os.path.expanduser('~')}/data/tickers/okex/coin_price.json") else None
+        self.instruments:dict[str, dict[str, dict]] = {}
+        for instType in ["SPOT", "SWAP", "FUTURES"]: self.organize_type_instruments(instType=instType)
     
     def get_utc_time(self, days=0, seconds=0, microseconds=0,
                 milliseconds=0, minutes=0, hours=0, weeks=0) -> datetime.datetime:
@@ -68,8 +70,11 @@ class Funding(object):
         return self.discount_info[coin.upper()]['discountInfo'] if coin.upper() in self.discount_info.keys() and 'discountInfo' in self.discount_info[coin.upper()].keys() else []
 
     def get_type_instruments(self, instType: str) -> list:
-        response = self.api.get_instruments(instType=instType)
-        ret = response.json()["data"] if response.status_code == 200 else []
+        if os.path.isfile(f"{os.path.expanduser('~')}/data/instruments/okex/{instType}.json"):
+            ret = json.load(open(f"{os.path.expanduser('~')}/data/instruments/okex/{instType}.json", "rb"))
+        else:
+            response = self.api.get_instruments(instType=instType)
+            ret = response.json()["data"] if response.status_code == 200 else []
         return ret
     
     def get_swap_instruments(self) -> list:
@@ -100,7 +105,7 @@ class Funding(object):
     
     def organize_type_instruments(self, instType: str) -> None:
         ret = self.get_type_instruments(instType=instType)
-        self.instruments.update({i["instId"]: i for i in ret})
+        self.instruments[instType] = {i["instId"]: i for i in ret}
     
     def get_contractsize(self, instId: str) -> float:
         instType = self.get_instType(instId)
@@ -113,11 +118,11 @@ class Funding(object):
     
     def get_contractsize_swap(self, instId: str) -> float:
         instId = instId.upper()
-        self.organize_type_instruments(instType="SWAP") if instId not in self.instruments.keys() else None
-        if instId in self.instruments.keys():
-            ret = float(self.instruments[instId]["ctVal"])
+        self.organize_type_instruments(instType="SWAP") if "SWAP" not in self.instruments.keys() else None
+        if instId in self.instruments["SWAP"].keys():
+            ret = float(self.instruments["SWAP"][instId]["ctVal"])
         else:
-            ret, self.instruments[instId] = np.nan, {"ctVal": "nan"}
+            ret, self.instruments["SWAP"][instId] = np.nan, {"ctVal": "nan"}
         return ret
     
     def get_contractsize_cswap(self, coin: str) -> float:
@@ -143,8 +148,10 @@ class Funding(object):
         instId = instId.upper().replace("_", "-")
         if os.path.isfile(f"""{os.path.expanduser("~")}/data/tier/okex/{instId}.csv"""):
             tier = pd.read_csv(f"""{os.path.expanduser("~")}/data/tier/okex/{instId}.csv""").to_dict('records')
-        else:
+        elif instId in self.instruments["SWAP"].keys() and "state" in self.instruments["SWAP"][instId].keys() and self.instruments["SWAP"]["BTC-USDC-SWAP"]["state"] == "live":
             tier = self.get_tier_swapAPI(instId=instId)
+        else:
+            tier = []
         self.tier.update({instId: tier})
         return tier
     
@@ -152,8 +159,10 @@ class Funding(object):
         coin = coin.upper().replace("_", "-").split("-")[0]
         if os.path.isfile(f"""{os.path.expanduser("~")}/data/tier/okex/{coin}.csv"""):
             tier =  pd.read_csv(f"""{os.path.expanduser("~")}/data/tier/okex/{coin}.csv""").to_dict('records')
-        else:
+        elif coin+"USDT" in self.instruments["SPOT"].keys():
             tier =  self.get_tier_spotAPI(coin=coin)
+        else:
+            tier = []
         self.tier.update({coin: tier})
         return tier
     
