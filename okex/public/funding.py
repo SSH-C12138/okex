@@ -15,9 +15,9 @@ class Funding(object):
         self.csv_time_str = c.TIME_MILLISECONDS
         self.datacenter = os.path.expanduser("~")+f"/data/account/okex" if not os.path.exists(c.CENTER_PATH) else c.CENTER_PATH
         self.depth_path = os.path.expanduser("~")+f"/data/depthData" if not os.path.exists(c.DEPTH_PATH) else c.DEPTH_PATH
-        self.tickers:dict[str, dict] = json.load(open(f"{os.path.expanduser('~')}/data/tickers/okex/tickers.json", "rb")) if os.path.isfile(f"{os.path.expanduser('~')}/data/tickers/okex/tickers.json") else None
+        self.tickers:dict[str, dict] = json.load(open(f"{os.path.expanduser('~')}/data/tickers/okex/tickers.json", "rb")) if os.path.isfile(f"{os.path.expanduser('~')}/data/tickers/okex/tickers.json") else {}
         self.coin_price = {coin: 1 for coin in c.QUOTE_CCY}
-        self.coin_price.update(json.load(open(f"{os.path.expanduser('~')}/data/tickers/okex/coin_price.json", "rb"))) if os.path.isfile(f"{os.path.expanduser('~')}/data/tickers/okex/coin_price.json") else None
+        if os.path.isfile(f"{os.path.expanduser('~')}/data/tickers/okex/coin_price.json"): self.coin_price.update(json.load(open(f"{os.path.expanduser('~')}/data/tickers/okex/coin_price.json", "rb"))) 
         self.instruments:dict[str, dict[str, dict]] = {}
         for instType in ["SPOT", "SWAP", "FUTURES"]: self.organize_type_instruments(instType=instType)
     
