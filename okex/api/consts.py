@@ -37,8 +37,6 @@ INTEREST_ACCRUED = '/api/v5/account/interest-accrued'
 INTEREST_RATE = '/api/v5/account/interest-rate'
 SET_GREEKS = '/api/v5/account/set-greeks'
 MAX_WITHDRAWAL = '/api/v5/account/max-withdrawal'
-EASY_CONVERET = '/api/v5/trade/easy-convert-currency-list'
-ONE_CLICK_REPAY = "/api/v5/trade/one-click-repay-currency-list"
 
 # funding
 DEPOSIT_ADDRESS = '/api/v5/asset/deposit-address'
@@ -66,6 +64,7 @@ ORACLE = '/api/v5/market/oracle'
 TIER = '/api/v5/public/tier'
 LENDING_RATE_SUMMARY = '/api/v5/finance/savings/lending-rate-summary'
 LENDING_RATE_HISTORY = '/api/v5/finance/savings/lending-rate-history'
+ETH2_STAKING = '/v2/asset/balance/projectEth2/apy-list'
 
 # Public Data
 INSTRUMENT_INFO = '/api/v5/public/instruments'
@@ -81,7 +80,6 @@ SYSTEM_TIME = '/api/v5/public/time'
 LIQUIDATION_ORDERS = '/api/v5/public/liquidation-orders'
 MARK_PRICE = '/api/v5/public/mark-price'
 POSITION_TIER = '/api/v5/public/position-tiers'
-ETH2_STAKING = '/v2/asset/balance/projectEth2/apy-list'
 
 # TRADE
 PLACR_ORDER = '/api/v5/trade/order'

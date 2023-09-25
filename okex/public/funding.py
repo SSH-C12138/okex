@@ -80,6 +80,9 @@ class Funding(object):
     def get_swap_instruments(self) -> list:
         self.swap_instruments = self.get_type_instruments(instType = "SWAP")
         return self.swap_instruments
+    
+    def get_swap_instIds(self) -> list:
+        return [info["instId"] for info in self.get_swap_instruments() if info["state"] == "live"]
 
     def get_margin_instruments(self) -> list:
         self.margin_instruments = self.get_type_instruments(instType="MARGIN")
@@ -254,10 +257,16 @@ class Funding(object):
         start_ts, end_ts = self.dt_to_ts(start), self.dt_to_ts(end)
         return self.get_long_interest(ccy=ccy, start_ts=start_ts, end_ts= end_ts)
     
+    def format_instId(self, instId: str) -> str:
+        instId = instId.upper()
+        if instId.count("-") == 1:
+            instId += "-SPOT"
+        return instId
+    
     def get_tickers(self, instType: str) -> None:
         response = self.api.get_tickers(instType=instType)
         ret = response.json()["data"] if response.status_code == 200 else []
-        self.tickers.update({i["instId"]: i for i in ret})
+        self.tickers.update({self.format_instId(i["instId"]): i for i in ret})
     
     def update_coin_price(self) -> None:
         self.get_tickers(instType= "SPOT")
@@ -301,6 +310,12 @@ class Funding(object):
         else:
             ret = {'fundingRate': '0', 'nextFundingRate': '0'}
         return {"current": float(ret["fundingRate"]), "next": float(ret['nextFundingRate'])}
+
+    async def async_get_current(self, instId: str) :
+        if not hasattr(self, "current") : self.current = {}
+        print(f"{instId} start {datetime.datetime.now()}")
+        self.current[instId] = self.get_current_funding(instId)
+        print(f"{instId} end {datetime.datetime.now()}")
 
     def get_current_interest(self, ccy: str) -> float:
         response = self.api.get_interest(ccy)

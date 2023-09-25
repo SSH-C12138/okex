@@ -1,5 +1,5 @@
 import requests, hmac, base64, datetime, hashlib, yaml, os, yaml
-import cr_assis.api.okex.consts as c
+import okex.api.consts as c
 from requests.adapters import HTTPAdapter, Retry
 
 
