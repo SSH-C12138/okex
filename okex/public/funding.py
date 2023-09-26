@@ -103,12 +103,12 @@ class Funding(object):
     def get_contract_names(self, contract: str) -> list:
         contract = contract.upper().replace("_", "-")
         ccy,instType = contract.split("-")[0], self.get_instType(contract)
-        names = [info["instId"] for info in self.get_type_instruments(instType=instType) if (info["state"] == "live" and (info["instFamily"].split("-")[-1] == ccy or info["quoteCcy"] == ccy))]
+        names = [self.format_instId(info["instId"]) for info in self.get_type_instruments(instType=instType) if (info["state"] == "live" and (info["instFamily"].split("-")[-1] == ccy or info["quoteCcy"] == ccy))]
         return names
     
     def organize_type_instruments(self, instType: str) -> None:
         ret = self.get_type_instruments(instType=instType)
-        self.instruments[instType] = {i["instId"]: i for i in ret}
+        self.instruments[instType] = {self.format_instId(i["instId"]): i for i in ret}
     
     def get_contractsize(self, instId: str) -> float:
         instType = self.get_instType(instId)
@@ -120,7 +120,7 @@ class Funding(object):
             return np.nan
     
     def get_contractsize_swap(self, instId: str) -> float:
-        instId = instId.upper()
+        instId = self.format_instId(instId)
         self.organize_type_instruments(instType="SWAP") if "SWAP" not in self.instruments.keys() else None
         if instId in self.instruments["SWAP"].keys():
             ret = float(self.instruments["SWAP"][instId]["ctVal"])
@@ -258,12 +258,13 @@ class Funding(object):
         return self.get_long_interest(ccy=ccy, start_ts=start_ts, end_ts= end_ts)
     
     def format_instId(self, instId: str) -> str:
-        instId = instId.upper()
-        if instId.count("-") == 1:
+        instId = instId.upper().replace("_", "-")
+        if instId.count("-") == 1 and "SWAP" not in instId:
             instId += "-SPOT"
         return instId
     
     def get_tickers(self, instType: str) -> None:
+        print(f"get tickers {instType}")
         response = self.api.get_tickers(instType=instType)
         ret = response.json()["data"] if response.status_code == 200 else []
         self.tickers.update({self.format_instId(i["instId"]): i for i in ret})
@@ -292,14 +293,14 @@ class Funding(object):
         return ret
     
     def get_vol(self, instId: str) -> float:
-        instId, instType = instId.upper(), self.get_instType(instId)
+        instId, instType = self.format_instId(instId=instId), self.get_instType(instId)
         self.get_tickers(instType=instType) if instId not in self.tickers.keys() else None
         info = self.tickers[instId] if instId in self.tickers.keys() else {"volCcy24h": np.nan, "last": np.nan}
         ret = float(info["volCcy24h"]) * float(info["last"]) if instType not in  ["SPOT", "MARGIN"] else float(info["volCcy24h"])
         return ret
     
     def get_price(self, instId: str) -> float:
-        instId, instType = instId.upper(), self.get_instType(instId)
+        instId, instType = self.format_instId(instId=instId), self.get_instType(instId)
         self.get_tickers(instType=instType) if instId not in self.tickers.keys() else None
         return float(self.tickers[instId]["last"]) if instId in self.tickers.keys() else np.nan
     
