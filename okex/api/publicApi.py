@@ -36,6 +36,11 @@ class PublicAPI(Client):
     def funding_rate_history(self, instId, after=None, before=None, limit=None):
         params = {'instId': instId, 'after': after, 'before': before, 'limit': limit}
         return self._requests(FUNDING_RATE_HISTORY, params)
+    
+    # async Get Funding Rate History
+    async def asyncGet_funding_history(self, instId: str, after=None, before=None, limit=None) -> dict:
+        params = {'instId': instId, 'after': after, 'before': before, 'limit': limit}
+        return await self._async_requests(FUNDING_RATE_HISTORY, params)
 
     # Get Limit Price
     def get_price_limit(self, instId):

@@ -1,4 +1,4 @@
-import requests, hmac, base64, datetime, hashlib, yaml, os, yaml
+import requests, hmac, base64, datetime, hashlib, yaml, os, yaml, aiohttp
 import okex.api.consts as c
 from requests.adapters import HTTPAdapter, Retry
 
@@ -50,6 +50,18 @@ class Client(object):
         response = session.get(url = self.api_url + query, headers=self.header) if method == self.c.GET else session.post(url = query, headers= self.header)
         return response
     
+    async def _send_async_requests(self, query: str, method: str = "GET") -> dict:
+        async with aiohttp.ClientSession() as session:
+            if method == self.c.GET:
+                async with session.get(self.api_url + query, headers=self.header) as response:
+                    ret = await response.json() if response.status == 200 else {}
+                await session.close()
+            else:
+                async with session.post(self.api_url + query, headers=self.header) as response:
+                    ret = await response.json() if response.status == 200 else {}
+                await session.close()
+        return ret
+    
     def _requests_public(self, query: str, method: str = "GET") -> requests.Response:
         self.header = {"accept": self.c.APPLICATION_JSON, "content-type": self.c.APPLICATION_JSON}
         return self._send_requests(query, method)
@@ -64,3 +76,16 @@ class Client(object):
         response = self._requests_public(url, method) if self.name == "" else self._requests_account(url, method)
         return response
     
+    async def _async_requests(self, query: str, params: dict = {}, method: str = "GET") -> dict:
+        url = query + self.parse_params_to_str(params)
+        response = await self._async_requests_public(url, method) if self.name == "" else await self._async_requests_account(url, method)
+        return response
+    
+    async def _async_requests_public(self, query: str, method: str = "GET") -> dict:
+        self.header = {"accept": self.c.APPLICATION_JSON, "content-type": self.c.APPLICATION_JSON}
+        return await self._send_async_requests(query, method)
+    
+    async def _async_requests_account(self, query: str, method: str = "GET") -> dict:
+        self.load_account_api() if not self.api_key or self.api_key == "" else None
+        self.get_account_header(query = query, method= method)
+        return await self._send_async_requests(query, method)

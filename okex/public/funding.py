@@ -247,6 +247,22 @@ class Funding(object):
     def get_long_funding_dt(self, instId: str, start: datetime.datetime, end: datetime.datetime) -> list:
         start_ts, end_ts = self.dt_to_ts(start), self.dt_to_ts(end)
         return self.get_long_funding(instId=instId, start_ts=start_ts, end_ts= end_ts)
+
+    async def asyncGet_long_funding(self, instId: str, start_ts: int, end_ts:int) -> list:
+        data = []
+        ts = end_ts
+        while ts >= start_ts:
+            ret = await self.api.asyncGet_funding_history(instId=instId, after=ts, before = start_ts-1000)
+            if "data" in ret.keys():
+                data += ret["data"]
+                ts = int(ret["data"][-1]["fundingTime"]) if len(ret["data"]) > 0 else start_ts-1000
+            else:
+                break
+        return data
+    
+    async def asyncGet_long_funding_dt(self, instId: str, start: datetime.datetime, end: datetime.datetime) -> list:
+        start_ts, end_ts = self.dt_to_ts(start), self.dt_to_ts(end)
+        return await self.asyncGet_long_funding(instId=instId, start_ts=start_ts, end_ts= end_ts)
     
     def get_long_interest(self, ccy: str, start_ts: int, end_ts: int) -> list:
         params = {"input": ccy, "timestamp": "ts", "error": "interest", "start_ts": start_ts, "end_ts": end_ts}
