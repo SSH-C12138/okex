@@ -280,7 +280,6 @@ class Funding(object):
         return instId
     
     def get_tickers(self, instType: str) -> None:
-        print(f"get tickers {instType}")
         response = self.api.get_tickers(instType=instType)
         ret = response.json()["data"] if response.status_code == 200 else []
         self.tickers.update({self.format_instId(i["instId"]): i for i in ret})
