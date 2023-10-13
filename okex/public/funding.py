@@ -337,3 +337,4 @@ class Funding(object):
         response = self.api.get_interest(ccy)
         ret = response.json()["data"][0] if response.status_code == 200 else {'estRate': 'nan', "preRate": "nan"}
         return {"estRate": float(ret["estRate"]), "preRate": float(ret['preRate'])}
+    
