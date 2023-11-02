@@ -67,7 +67,7 @@ class Client(object):
         return self._send_requests(query, method)
     
     def _requests_account(self, query: str, method: str = "GET") -> requests.Response:
-        self.load_account_api() if not self.api_key or self.api_key == "" else None
+        self.load_account_api() if not hasattr(self, "api_key") or self.api_key == "" else None
         self.get_account_header(query = query, method= method)
         return self._send_requests(query, method)
     
