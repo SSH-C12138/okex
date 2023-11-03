@@ -1,5 +1,7 @@
 from okex.api.client import Client
 import okex.api.consts as c
+import time
+import numpy as np
 
 class AccountAPI(Client):
 
@@ -93,3 +95,18 @@ class AccountAPI(Client):
 
     def get_oneLink_repay(self):
         return self._requests(c.ONE_CLICK_REPAY)
+    
+    def get_long_bills(self, start_ts: int|str, end_ts: int| str) -> list:
+        ts, data, billId = end_ts, [], np.nan
+        while ts > start_ts:
+            response = self.get_bills_details(begin=start_ts-1000, end=ts) if np.isnan(billId) else self.get_bills_details(begin=start_ts-1000, end=ts, after=billId)
+            if response.status_code == 200:
+                ret = response.json()["data"]
+                data += ret
+                ts = int(ret[-1]["ts"]) if len(ret) > 0 else start_ts-1000
+                billId = int(ret[-1]["billId"]) if len(ret) > 0 else np.nan
+            elif response.status_code == 429:
+                time.sleep(0.1)
+            else:
+                break
+        return data
