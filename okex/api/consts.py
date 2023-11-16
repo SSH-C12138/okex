@@ -1,5 +1,6 @@
 # http header
 API_URL = 'https://www.okex.com'
+WSS_URL = "wss://ws.okx.com:8443"
 
 CONTENT_TYPE = 'Content-Type'
 OK_ACCESS_KEY = 'OK-ACCESS-KEY'
@@ -17,6 +18,10 @@ GET = "GET"
 POST = "POST"
 
 SERVER_TIMESTAMP_URL = '/api/v5/public/time'
+VERIFY = "/users/self/verify"
+PRIVATE_WEBSOCKET = '/ws/v5/private'
+PUBLIC_WEBSOCKET = '/ws/v5/public'
+BUSINESS_WEBSOCKET = '/ws/v5/business'
 
 # account
 POSITION_RISK='/api/v5/account/account-position-risk'

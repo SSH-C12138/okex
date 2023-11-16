@@ -1,4 +1,4 @@
-import requests, hmac, base64, datetime, hashlib, yaml, os, yaml, aiohttp
+import requests, hmac, base64, datetime, hashlib, yaml, os, yaml, aiohttp, websockets, time
 import okex.api.consts as c
 from requests.adapters import HTTPAdapter, Retry
 
@@ -12,8 +12,10 @@ class Client(object):
         self.passphrase: str
         self.server_time: str
         self.api_url = self.c.API_URL
+        self.wss_url = self.c.WSS_URL
         self.header = {"accept": self.c.APPLICATION_JSON, "content-type": self.c.APPLICATION_JSON}
         self.name: str = ""
+        self.is_login = False
     
     def load_account_api(self) -> None:
         self.api_key, self.secret_key, self.passphrase = "", "", ""
@@ -24,7 +26,26 @@ class Client(object):
                 self.api_key = info["api_key"]
                 self.secret_key = info["secret_key"]
                 self.passphrase = info["passphrase"]
-                
+    
+    async def login_account(self) -> None:
+        if not hasattr(self, "api_key") or self.api_key == "": self.load_account_api()
+        timestamp = str(int(time.time()))
+        message = timestamp + c.GET + c.VERIFY
+        signature = base64.b64encode(hmac.new(bytes(self.secret_key, "utf-8"), bytes(message, "utf-8"), digestmod=hashlib.sha256).digest())
+        info = {"op": "login","args": [{"apiKey": self.api_key,"passphrase": self.passphrase,"timestamp": timestamp,"sign": signature.decode("utf-8")}]}
+        send_info = str(info).replace("'", '"')
+        websocket = await websockets.connect(self.wss_url+c.PRIVATE_WEBSOCKET)
+        await websocket.send(send_info)
+        message = await websocket.recv()
+        self.private_websocket: websockets.WebSocketClientProtocol = websocket
+        self.is_login = True if eval(message)["code"] == "0" and eval(message)["event"] == "login" else False
+        
+    async def connect_public(self) -> None:
+        self.public_websocket: websockets.WebSocketClientProtocol = await websockets.connect(self.wss_url+c.PUBLIC_WEBSOCKET)
+    
+    async def connect_business(self) -> None:
+        self.business_websocket: websockets.WebSocketClientProtocol = await websockets.connect(self.wss_url+c.BUSINESS_WEBSOCKET)
+        
     def get_account_header(self, query: str, method: str = "GET"):
         self.header = {"accept": self.c.APPLICATION_JSON, "content-type": self.c.APPLICATION_JSON}
         timestamp = datetime.datetime.now().astimezone(datetime.timezone.utc).isoformat(timespec='milliseconds').replace("+00:00", "Z")
