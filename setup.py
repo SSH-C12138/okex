@@ -11,6 +11,7 @@ REQUIRES = [
     'pandas>=2.0.0',
     'numpy>=1.24.2',
     'matplotlib>=3.7.1',
+    "websockets>=12.0"
 ]
 
 setup(
