@@ -34,7 +34,7 @@ class Funding(object):
         ret["time"] = ret["time"].apply(lambda x: datetime.datetime.strptime(x, self.csv_time_str).replace(tzinfo = self.tz))
         return ret[(ret["time"] >= start) & (ret["time"] <= end)].reset_index(drop=True)
     
-    def get_depthData(self, instId: str, start:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC) + datetime.timedelta(days = -1), end:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC)) -> pd.DataFrame: 
+    def get_depthData(self, instId: str, start:datetime.datetime = None, end:datetime.datetime = None) -> pd.DataFrame: 
         """
         Args:
             instId (str): the instId 
@@ -43,12 +43,16 @@ class Funding(object):
         Returns:
             pd.DataFrame: _description_
         """
+        if start is None: start = self.get_utc_time(days = -1)
+        if end is None: end = self.get_utc_time()
         pair = instId.lower().replace("-", "_")
         kind = pair.split("_")[-1] if not str.isnumeric(pair.split("_")[-1]) else "delivery"
         data = self.read_day_csv(path = f"{self.depth_path}/{kind}/{pair}", start=start, end = end)
         return data if len(data) > 0 else pd.DataFrame(columns = ["bid", "bidVol","ask", "askVol","time"])
     
-    def get_spreadData(self, combo: str, start:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC) + datetime.timedelta(days = -1), end:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC)) -> pd.DataFrame:
+    def get_spreadData(self, combo: str, start:datetime.datetime = None, end:datetime.datetime = None) -> pd.DataFrame:
+        if start is None: start = self.get_utc_time(days = -1)
+        if end is None: end = self.get_utc_time()
         self.depthData = {c.MASTER: self.get_depthData(instId=combo.split("-")[0], start = start, end = end), c.SLAVE: self.get_depthData(instId=combo.split("-")[-1], start = start, end = end)}
         data = pd.merge(self.depthData[c.MASTER][["bid", "ask", "time"]].rename(columns={"bid": f"{c.MASTER}_bid", "ask": f"{c.MASTER}_ask"}), self.depthData[c.SLAVE][["bid", "ask", "time"]].rename(columns={"bid": f"{c.SLAVE}_bid", "ask": f"{c.SLAVE}_ask"}), on = "time")
         self.spreadData = pd.DataFrame(columns = [c.LONG, c.SHORT, "time"]).astype({c.LONG: "float64", c.SHORT: "float64", "time": "datetime64[ns]"})
@@ -56,7 +60,9 @@ class Funding(object):
         self.spreads[combo] = self.spreadData.copy()
         return self.spreadData
     
-    def get_spread(self, combo: str, start:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC) + datetime.timedelta(days = -1), end:datetime.datetime = datetime.datetime.now().astimezone(pytz.UTC)) -> pd.DataFrame:
+    def get_spread(self, combo: str, start:datetime.datetime = None, end:datetime.datetime = None) -> pd.DataFrame:
+        if start is None: start = self.get_utc_time(days = -1)
+        if end is None: end = self.get_utc_time()
         return self.spreads[combo] if combo in self.spreads.keys() else self.get_spreadData(combo, start, end)
     
     def dt_to_ts(self, dt: datetime.datetime) -> int:
