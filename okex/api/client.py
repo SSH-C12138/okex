@@ -110,3 +110,8 @@ class Client(object):
         self.load_account_api() if not self.api_key or self.api_key == "" else None
         self.get_account_header(query = query, method= method)
         return await self._send_async_requests(query, method)
+    
+    async def _send(self, websocket: websockets.WebSocketClientProtocol, info: str):
+        await websocket.send(info)
+        response = await websocket.recv()
+        return response

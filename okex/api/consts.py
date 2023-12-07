@@ -1,5 +1,5 @@
 # http header
-API_URL = 'https://www.okex.com'
+API_URL = 'https://www.okx.com'
 WSS_URL = "wss://ws.okx.com:8443"
 
 CONTENT_TYPE = 'Content-Type'
@@ -42,6 +42,8 @@ INTEREST_ACCRUED = '/api/v5/account/interest-accrued'
 INTEREST_RATE = '/api/v5/account/interest-rate'
 SET_GREEKS = '/api/v5/account/set-greeks'
 MAX_WITHDRAWAL = '/api/v5/account/max-withdrawal'
+EASY_CONVERET = '/api/v5/trade/easy-convert-currency-list'
+ONE_CLICK_REPAY = '/api/v5/trade/one-click-repay-currency-list'
 
 # funding
 DEPOSIT_ADDRESS = '/api/v5/asset/deposit-address'
