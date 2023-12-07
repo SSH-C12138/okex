@@ -120,3 +120,8 @@ class AccountAPI(Client):
         if not self.is_login: await self.login_account()
         info = '''{"op": "subscribe", "args": [{"channel": "positions", "instType": "ANY"}]}'''
         await self._send(websocket=self.private_websocket, info = info)
+        
+    async def subscribe_balPos(self):
+        if not self.is_login: await self.login_account()
+        info = '''{"op": "subscribe", "args": [{"channel": "balance_and_position"}]}'''
+        await self._send(websocket=self.private_websocket, info = info)
