@@ -107,3 +107,10 @@ class PublicAPI(Client):
     def get_candles(self, instId: str, bar: str = "1D", after: int|str = None, before: int|str = None, limit: int|str = 100):
         params = {k:v  for k, v in locals().items() if k != 'self' and v is not None}
         return self._requests(HISTORY_CANDLES, params)
+
+    # subscribe tickers
+    async def subscribe_tickers(self, instIds: list[str] = []):
+        if not hasattr(self, "public_websocket"): await self.connect_public()
+        args = [{"channel": "tickers","instId": instId} for instId in instIds]
+        info = '''{"op": "subscribe", "args": #args}'''.replace("#args", str(args).replace("'", '"'))
+        await self._send(websocket=self.public_websocket, info = info)
