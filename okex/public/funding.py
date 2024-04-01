@@ -49,7 +49,7 @@ class Funding(object):
         kind = pair.split("_")[-1] if not str.isnumeric(pair.split("_")[-1]) else "delivery"
         data = self.read_day_csv(path = f"{self.depth_path}/{kind}/{pair}", start=start, end = end)
         if len(data) > 0:
-            data["time"] = data["time"].apply(lambda x: datetime.datetime.strptime(str(x)[:19], "%Y-%m-%dT%H:%M:%S")).replace(tzinfo = self.tz)
+            data["time"] = data["time"].apply(lambda x: x.replace(microsecond=0))
         else:
             data = pd.DataFrame(columns = ["bid", "bidVol","ask", "askVol","time"])
         return data
