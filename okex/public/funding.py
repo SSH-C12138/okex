@@ -27,7 +27,7 @@ class Funding(object):
     
     def read_day_csv(self, path: str, start: datetime.datetime, end: datetime.datetime) -> pd.DataFrame:
         date, all_data = start, {}
-        while date <= end:
+        while date.date() <= end.date():
             all_data[date.date()] = pd.read_csv(f"{path}/{date.date()}.csv") if os.path.isfile(f"{path}/{date.date()}.csv") else pd.DataFrame(columns = ["time"])
             date += datetime.timedelta(days = 1)
         ret = pd.concat(all_data.values()).sort_values(by = "time")
@@ -48,7 +48,11 @@ class Funding(object):
         pair = instId.lower().replace("-", "_")
         kind = pair.split("_")[-1] if not str.isnumeric(pair.split("_")[-1]) else "delivery"
         data = self.read_day_csv(path = f"{self.depth_path}/{kind}/{pair}", start=start, end = end)
-        return data if len(data) > 0 else pd.DataFrame(columns = ["bid", "bidVol","ask", "askVol","time"])
+        if len(data) > 0:
+            data["time"] = data["time"].apply(lambda x: datetime.datetime.strptime(str(x)[:19], "%Y-%m-%dT%H:%M:%S")).replace(tzinfo = self.tz)
+        else:
+            data = pd.DataFrame(columns = ["bid", "bidVol","ask", "askVol","time"])
+        return data
     
     def get_spreadData(self, combo: str, start:datetime.datetime = None, end:datetime.datetime = None) -> pd.DataFrame:
         if start is None: start = self.get_utc_time(days = -1)
