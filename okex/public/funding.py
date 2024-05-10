@@ -72,11 +72,13 @@ class Funding(object):
     def dt_to_ts(self, dt: datetime.datetime) -> int:
         return int(datetime.datetime.timestamp(dt.replace(tzinfo=self.tz)) * 1000)
 
+    def init_discount_info(self) -> None:
+        response = self.api.discount_interest_free_quota()
+        ret = response.json()["data"] if response.status_code == 200 else []
+        self.discount_info = {info["ccy"]: info for info in ret}
+
     def get_discount_info(self, coin: str) -> list:
-        if not hasattr(self, "discount_info"):
-            response = self.api.discount_interest_free_quota()
-            ret = response.json()["data"] if response.status_code == 200 else []
-            self.discount_info = {info["ccy"]: info for info in ret}
+        if not hasattr(self, "discount_info"): self.init_discount_info()
         return self.discount_info[coin.upper()]['discountInfo'] if coin.upper() in self.discount_info.keys() and 'discountInfo' in self.discount_info[coin.upper()].keys() else []
 
     def get_type_instruments(self, instType: str) -> list:
