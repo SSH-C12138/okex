@@ -45,15 +45,20 @@ class Client(object):
     
     async def connect_business(self) -> None:
         self.business_websocket: websockets.WebSocketClientProtocol = await websockets.connect(self.wss_url+c.BUSINESS_WEBSOCKET)
-        
+    
+    def get_system_time(self) -> str:
+        response = requests.get(f"{self.api_url}/api/v5/public/time")
+        ret = response.json() if response.status_code == 200 else str(datetime.datetime.now().astimezone(datetime.timezone.utc).isoformat(timespec='milliseconds').replace("+00:00", "Z"))
+        return ret["data"][0]["ts"]
+    
     def get_account_header(self, query: str, method: str = "GET"):
         self.header = {"accept": self.c.APPLICATION_JSON, "content-type": self.c.APPLICATION_JSON}
-        timestamp = datetime.datetime.now().astimezone(datetime.timezone.utc).isoformat(timespec='milliseconds').replace("+00:00", "Z")
+        timestamp = str(datetime.datetime.now().astimezone(datetime.timezone.utc).isoformat(timespec='milliseconds').replace("+00:00", "Z"))
         message = timestamp + method + query
         signature = base64.b64encode(hmac.new(bytes(self.secret_key, "utf-8"), bytes(message, "utf-8"), digestmod=hashlib.sha256).digest())
         self.header[self.c.OK_ACCESS_KEY] = self.api_key
         self.header[self.c.OK_ACCESS_SIGN] = signature
-        self.header[self.c.OK_ACCESS_TIMESTAMP] = str(timestamp)
+        self.header[self.c.OK_ACCESS_TIMESTAMP] = timestamp
         self.header[self.c.OK_ACCESS_PASSPHRASE] = self.passphrase
     
     def parse_params_to_str(self, params: dict[str, str]):
